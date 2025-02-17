@@ -1,4 +1,4 @@
-TOKEN =  "https://api.telegram.org/bot7621286461:AAHUzBUufUbBaXpi_pSrl7t3qj2JK9Uwz7c/getMe" # 
+TOKEN = "7621286461:AAHUzBUufUbBaXpi_pSrl7t3qj2JK9Uwz7c"
 GROUP_ID = -1001234567890  
 MAIN_TOKEN_CHANNEL = 5948043251  #  actual channel ID
 

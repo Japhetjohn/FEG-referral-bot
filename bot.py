@@ -1,11 +1,9 @@
 import telebot
-from config import TOKEN
 
-bot = telebot.TeleBot(TOKEN)
+BOT_TOKEN = "7621286461:AAFG7MCDH4o4q7_xtWl1wI-e0Ts0lEZvmiA"
+bot = telebot.TeleBot(BOT_TOKEN)
 
-print("Starting FEG Army Token Referral Bot...")
+def start_bot():
+    bot.polling(none_stop=True)
 
-try:
-    bot.polling(non_stop=True, timeout=60, long_polling_timeout=60)
-except Exception as e:
-    print(f"Bot encountered an error: {e}")
+start_bot()
