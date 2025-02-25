@@ -11,4 +11,4 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("⚠️ BOT_TOKEN is missing! Check your .env file.")
 
-DB_NAME = "data/referrals.db"
+DB_NAME = "data/referrals.db"  # Path to SQLite database

@@ -1,32 +1,38 @@
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
-from telegram.ext import ContextTypes
+import sqlite3
+from telegram import Update
+from telegram.ext import CallbackContext
 
-# Start command
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [[
-        InlineKeyboardButton("💰 My Link", callback_data="my_link"),
-        InlineKeyboardButton("📜 My Referrals", callback_data="my_referrals"),
-    ], [
-        InlineKeyboardButton("🏆 Leaderboard", callback_data="leaderboard")
-    ]]
+# 🏆 Leaderboard Command
+def leaderboard(update: Update, context: CallbackContext):
+    conn = sqlite3.connect("data/referrals.db")
+    cursor = conn.cursor()
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
-        "🚀 Welcome to the FEG Army Referral Bot!\n\n"
-        "🔹 Earn rewards by referring friends!\n"
-        "🔹 Use the buttons below to track your progress.\n\n"
-        "👇 Choose an option:",
-        reply_markup=reply_markup
-    )
+    cursor.execute("SELECT username, points FROM users ORDER BY points DESC LIMIT 10")
+    top_users = cursor.fetchall()
+    conn.close()
 
-# My Link command
-async def my_link_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🔗 Your referral link: https://t.me/yourbot?start=123456")
+    if not top_users:
+        update.message.reply_text("❌ No users found in the leaderboard.")
+        return
 
-# My Referrals command
-async def my_referrals_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("📜 You have referred: 5 users")
+    leaderboard_text = "🏆 *Leaderboard (Top 10)* 🏆\n\n"
+    for rank, (username, points) in enumerate(top_users, 1):
+        leaderboard_text += f"{rank}. {username} - {points} points\n"
 
-# Leaderboard command
-async def leaderboard_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🏆 Top 3 referrers:\n1. @user1 - 50 refs\n2. @user2 - 40 refs\n3. @user3 - 30 refs")
+    update.message.reply_text(leaderboard_text, parse_mode="Markdown")
+
+# 👥 My Referrals Command
+def my_referrals(update: Update, context: CallbackContext):
+    user_id = update.message.from_user.id
+
+    conn = sqlite3.connect("data/referrals.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id = ?", (user_id,))
+    referral_count = cursor.fetchone()[0]
+    conn.close()
+
+    if referral_count == 0:
+        update.message.reply_text("😕 You haven't referred anyone yet.")
+    else:
+        update.message.reply_text(f"👥 You have referred *{referral_count}* users!", parse_mode="Markdown")

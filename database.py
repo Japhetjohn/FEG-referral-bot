@@ -1,75 +1,79 @@
 import sqlite3
 
-DB_PATH = "data/referrals.db"  # Ensure this path is correct
+DB_NAME = "data/referrals.db"
 
-def create_tables():
-    """Creates the database tables if they don't exist."""
-    conn = sqlite3.connect(DB_PATH)
+def init_db():
+    """Create the database tables if they don't exist."""
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     
+    # Create users table (WITH referrer_id column)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
             username TEXT,
-            referral_link TEXT
+            referrer_id INTEGER  -- This column was missing!
         )
     """)
-
+    
+    # Create referrals table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS referrals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             referrer_id INTEGER,
-            referred_id INTEGER,
-            FOREIGN KEY (referrer_id) REFERENCES users (user_id),
-            FOREIGN KEY (referred_id) REFERENCES users (user_id)
-        )
-    """)
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS points (
-            user_id INTEGER PRIMARY KEY,
-            points INTEGER DEFAULT 0,
-            FOREIGN KEY (user_id) REFERENCES users (user_id)
+            referred_id INTEGER
         )
     """)
 
     conn.commit()
     conn.close()
 
-def get_referral_link(user_id):
-    """Fetches the referral link for a user."""
-    conn = sqlite3.connect(DB_PATH)
+def add_user(user_id, username, referrer_id=None):
+    """Add a new user to the database."""
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    
-    cursor.execute("SELECT referral_link FROM users WHERE user_id = ?", (user_id,))
-    result = cursor.fetchone()
+
+    # Check if user already exists
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    existing_user = cursor.fetchone()
+
+    if not existing_user:
+        cursor.execute("INSERT INTO users (user_id, username, referrer_id) VALUES (?, ?, ?)",
+                       (user_id, username, referrer_id))
+        
+        # If user has a referrer, add to referrals table
+        if referrer_id:
+            cursor.execute("INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)", (referrer_id, user_id))
+
+        conn.commit()
     
     conn.close()
-    
-    return result[0] if result else None
 
 def get_referrals(user_id):
-    """Fetches referrals for a user."""
-    conn = sqlite3.connect(DB_PATH)
+    """Get the number of referrals for a user."""
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-    
-    cursor.execute("SELECT referred_id FROM referrals WHERE referrer_id = ?", (user_id,))
-    referrals = cursor.fetchall()
-    
+    cursor.execute("SELECT COUNT(*) FROM referrals WHERE referrer_id = ?", (user_id,))
+    count = cursor.fetchone()[0]
     conn.close()
-    
-    return [r[0] for r in referrals]
+    return count
 
 def get_leaderboard():
-    """Fetches the top 10 users with the highest points."""
-    conn = sqlite3.connect(DB_PATH)
+    """Get the top 10 users with the most referrals."""
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    cursor.execute("""
+        SELECT users.username, COUNT(referrals.referred_id) AS referral_count
+        FROM users
+        LEFT JOIN referrals ON users.user_id = referrals.referrer_id
+        GROUP BY users.user_id
+        ORDER BY referral_count DESC
+        LIMIT 10
+    """)
     
-    cursor.execute("SELECT user_id, points FROM points ORDER BY points DESC LIMIT 10")
     leaderboard = cursor.fetchall()
-    
     conn.close()
-    
     return leaderboard
 
-# Ensure tables exist on script import
-create_tables()
+# Initialize database
+init_db()
